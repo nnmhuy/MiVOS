@@ -56,11 +56,10 @@ class InferenceCore:
         nh, nw = self.images.shape[-2:]
         self.images = self.images.to(self.data_dev, non_blocking=False)
 
-        # TODO: load prob from stored masks
+        # TODO: load prob from stored masks if fusion
         # Object probabilities, background included
-        self.prob = torch.zeros((self.k + 1, t, 1, nh, nw),
+        self.prob = torch.zeros((self.k, t, 1, nh, nw),
                                 dtype=torch.float32, device=self.result_dev)
-        self.prob[0] = 1e-7
 
         self.t, self.h, self.w = t, h, w
         self.nh, self.nw = nh, nw
@@ -140,7 +139,7 @@ class InferenceCore:
             out_mask = self.prop_net.segment_with_query(
                 this_k, this_v, qf8, qf4, k16, qv16)
 
-            out_mask = aggregate_wbg(out_mask, keep_bg=True)
+            out_mask = aggregate_wbg(out_mask, keep_bg=False)
 
             if ti != end and abs(ti-last_ti) >= self.mem_freq:
                 keys[:, :, m_front:m_front+1] = k16.unsqueeze(2)
@@ -173,11 +172,11 @@ class InferenceCore:
         dist = torch.FloatTensor([nc, nr]).to(self.device).unsqueeze(0)
         attn_map = self.prop_net.get_attention(
             mk16, self.pos_mask_diff, self.neg_mask_diff, qk16)
-        for k in range(1, self.k+1):
+        for k in range(0, self.k):
             w = torch.sigmoid(self.fuse_net(self.get_image_buffered(ti),
                                             prev_mask[k:k+1].to(self.device), curr_mask[k:k+1].to(self.device), attn_map[k:k+1], dist))
-            prob[k-1] = w
-        return aggregate_wbg(prob, keep_bg=True)
+            prob[k] = w
+        return aggregate_wbg(prob, keep_bg=False)
 
     def interact(self, mask, idx):
         """
@@ -199,7 +198,7 @@ class InferenceCore:
         key_k, _, qf16, _, _ = self.get_key_feat_buffered(idx)
         key_k = key_k.unsqueeze(2)
         key_v = self.prop_net.encode_value(
-            self.get_image_buffered(idx), qf16, mask[1:])
+            self.get_image_buffered(idx), qf16, mask)
 
         if self.certain_mem_k is None:
             self.certain_mem_k = key_k
@@ -212,7 +211,7 @@ class InferenceCore:
         self.do_pass(key_k, key_v, idx, True)
 
         # T * H * W
-        result_prob = self.prob[1]
+        result_prob = self.prob[0]
         # Trim paddings
         if self.pad[2]+self.pad[3] > 0:
             result_prob = result_prob[:, :, self.pad[2]:-self.pad[3], :]

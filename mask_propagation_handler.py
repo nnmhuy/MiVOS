@@ -100,15 +100,15 @@ class MaskPropagationHandler(BaseHandler):
         self.initialized = True
 
 
-    def _parse_request(self, data):
-        annotation_object_id = data.get("annotation_object_id")
-        dataset_id = data.get("dataset_id")
-        video_name = data.get("video_name")
-        key_frames = data.get("key_frames")
-        propagating_frames = data.get("propagating_frames")
-        frame_frequency = data.get("frame_frequency")
+    # def _parse_request(self, data):
+    #     annotation_object_id = data.get("annotation_object_id")
+    #     dataset_id = data.get("dataset_id")
+    #     video_name = data.get("video_name")
+    #     key_frames = data.get("key_frames")
+    #     propagating_frames = data.get("propagating_frames")
+    #     frame_frequency = data.get("frame_frequency")
 
-        return data
+    #     return data
 
     def _load_images(self, dataset_id, video_name, frames):
         """
