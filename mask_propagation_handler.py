@@ -75,7 +75,8 @@ class MaskPropagationHandler(BaseHandler):
             raise RuntimeError("Missing the stcn.pth file")
 
         prop_net = PropagationNetwork()
-        prop_net.load_state_dict(torch.load(model_pt_path, map_location=self.device))
+        prop_net.load_state_dict(torch.load(
+            prop_model_pth_path, map_location=self.device))
         prop_net = prop_net.to(self.device).eval()
         torch.set_grad_enabled(False)
 

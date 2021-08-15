@@ -7,7 +7,6 @@ import cv2
 import glob
 
 import matplotlib.pyplot as plt
-from scipy.ndimage.morphology import binary_erosion, binary_dilation
 from PIL import Image, ImageDraw, ImageFont
 
 import torch
@@ -60,79 +59,3 @@ def load_masks(path, min_side=None):
     if binary_mask:
         frames = (frames > 128).astype(np.uint8)
     return frames
-
-def load_video(path, min_side=None):
-    frame_list = []
-    cap = cv2.VideoCapture(path)
-    while(cap.isOpened()):
-        _, frame = cap.read()
-        if frame is None:
-            break
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_list.append(frame)
-    frames = np.stack(frame_list, axis=0)
-    return frames
-
-def _pascal_color_map(N=256, normalized=False):
-    """
-    Python implementation of the color map function for the PASCAL VOC data set.
-    Official Matlab version can be found in the PASCAL VOC devkit
-    http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html#devkit
-    """
-
-    def bitget(byteval, idx):
-        return (byteval & (1 << idx)) != 0
-
-    dtype = 'float32' if normalized else 'uint8'
-    cmap = np.zeros((N, 3), dtype=dtype)
-    for i in range(N):
-        r = g = b = 0
-        c = i
-        for j in range(8):
-            r = r | (bitget(c, 0) << 7 - j)
-            g = g | (bitget(c, 1) << 7 - j)
-            b = b | (bitget(c, 2) << 7 - j)
-            c = c >> 3
-
-        cmap[i] = np.array([r, g, b])
-
-    cmap = cmap / 255 if normalized else cmap
-    return cmap
-
-color_map = [
-    [0, 0, 0], 
-    [255, 50, 50], 
-    [50, 255, 50], 
-    [50, 50, 255], 
-    [255, 50, 255], 
-    [50, 255, 255], 
-    [255, 255, 50], 
-]
-
-color_map_np = np.array(color_map)
-
-def overlay_davis(image, mask, alpha=0.5):
-    """ Overlay segmentation on top of RGB image. from davis official"""
-    im_overlay = image.copy()
-
-    colored_mask = color_map_np[mask]
-    foreground = image*alpha + (1-alpha)*colored_mask
-    binary_mask = (mask > 0)
-    # Compose image
-    im_overlay[binary_mask] = foreground[binary_mask]
-    countours = binary_dilation(binary_mask) ^ binary_mask
-    im_overlay[countours,:] = 0
-    return im_overlay.astype(image.dtype)
-
-def overlay_davis_fade(image, mask, alpha=0.5):
-    im_overlay = image.copy()
-
-    colored_mask = color_map_np[mask]
-    foreground = image*alpha + (1-alpha)*colored_mask
-    binary_mask = (mask > 0)
-    # Compose image
-    im_overlay[binary_mask] = foreground[binary_mask]
-    countours = binary_dilation(binary_mask) ^ binary_mask
-    im_overlay[countours,:] = 0
-    im_overlay[~binary_mask] = im_overlay[~binary_mask] * 0.6
-    return im_overlay.astype(image.dtype)

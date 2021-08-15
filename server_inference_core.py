@@ -1,7 +1,5 @@
 """
-Heart of most evaluation scripts (DAVIS semi-sup/interactive, GUI)
 Handles propagation and fusion
-See eval_semi_davis.py / eval_interactive_davis.py for examples
 """
 
 import torch
@@ -178,13 +176,11 @@ class InferenceCore:
             prob[k] = w
         return aggregate_wbg(prob, keep_bg=False)
 
-    def interact(self, mask, idx):
+    def interact(self, mask, idx=0):
         """
         Interact -> Propagate -> Fuse
-
-        mask - One-hot mask of the interacted frame, background included
+        mask - Prob mask of the interacted frame (1 * 1 * H *  W)
         idx - Frame index of the interacted frame
-
         Return: all mask prob images
         """
 
