@@ -11,7 +11,6 @@ from model.aggregate import aggregate_wbg
 
 from util.tensor_util import pad_divide_by
 
-
 class InferenceCore:
     """
     images - leave them in original dimension (unpadded), but do normalize them. 
@@ -142,7 +141,7 @@ class InferenceCore:
             if ti != end and abs(ti-last_ti) >= self.mem_freq:
                 keys[:, :, m_front:m_front+1] = k16.unsqueeze(2)
                 values[:, :, m_front:m_front+1] = self.prop_net.encode_value(
-                    self.get_image_buffered(ti), qf16, out_mask[1:])
+                    self.get_image_buffered(ti), qf16, out_mask)
 
                 m_front += 1
                 last_ti = ti
@@ -155,7 +154,7 @@ class InferenceCore:
             else:
                 self.prob[:, ti] = out_mask.to(
                     self.result_dev, non_blocking=True)
-
+              
         return closest_ti
 
     def fuse_one_frame(self, tc, tr, ti, prev_mask, curr_mask, mk16, qk16):
@@ -176,6 +175,7 @@ class InferenceCore:
             prob[k] = w
         return aggregate_wbg(prob, keep_bg=False)
 
+
     def interact(self, mask, idx=0):
         """
         Interact -> Propagate -> Fuse
@@ -184,7 +184,7 @@ class InferenceCore:
         Return: all mask prob images
         """
 
-        mask = mask.to(self.device)
+        mask = mask.to(self.device, dtype=torch.float)
         mask, _ = pad_divide_by(mask, 16, mask.shape[-2:])
         self.mask_diff = mask - self.prob[:, idx].to(self.device)
         self.pos_mask_diff = self.mask_diff.clamp(0, 1)
@@ -204,7 +204,7 @@ class InferenceCore:
             self.certain_mem_v = torch.cat([self.certain_mem_v, key_v], 2)
 
         # Forward
-        self.do_pass(key_k, key_v, idx, True)
+        self.do_pass(key_k, key_v, idx)
 
         # T * H * W
         result_prob = self.prob[0]
